@@ -1,0 +1,415 @@
+{% extends "base.html" %}
+{% block title %}Manage — Español{% endblock %}
+
+{% block head %}
+<style>
+  .manage-header { display: flex; align-items: baseline; gap: 1.2rem; margin-bottom: 1rem; }
+  .word-count { font-size: .88rem; color: #666; }
+
+  /* Add word form */
+  .add-form {
+    display: flex; gap: .5rem; flex-wrap: wrap; align-items: flex-end;
+    background: #fff; border: 1px solid #d8e8df; border-radius: 8px;
+    padding: .9rem 1rem; margin-bottom: 1.4rem;
+  }
+  .add-form label { font-size: .78rem; font-weight: 700; color: #555; display: block; margin-bottom: .25rem; }
+  .add-form input[type="text"] {
+    padding: .4rem .75rem; border: 1px solid #ccc; border-radius: 5px;
+    font-size: .9rem; font-family: inherit; width: 180px;
+  }
+  .add-form input[type="text"]:focus { outline: none; border-color: #2d6a4f; box-shadow: 0 0 0 2px #b7e4c7; }
+  .add-form .hint { font-size: .75rem; color: #999; display: block; margin-top: .15rem; }
+
+  /* Table */
+  table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,.07); }
+  thead tr { background: #2d6a4f; color: #fff; }
+  th, td { padding: .6rem .9rem; text-align: left; font-size: .9rem; }
+  th { font-weight: 700; font-size: .78rem; text-transform: uppercase; letter-spacing: .05em; }
+  tbody tr:nth-child(even) { background: #f7faf8; }
+  tbody tr:hover { background: #eaf5ed; }
+  td.score-cell { font-variant-numeric: tabular-nums; }
+  .score-bar-wrap { display: flex; align-items: center; gap: .6rem; }
+  .score-bar { height: 8px; border-radius: 4px; background: #e0e0e0; flex: 1; overflow: hidden; }
+  .score-bar-fill { height: 100%; border-radius: 4px; background: #40916c; transition: width .3s; }
+  .score-val { font-size: .8rem; color: #444; width: 2.5rem; text-align: right; }
+  td.no-words { text-align: center; color: #888; padding: 2rem; }
+  .actions-cell { display: flex; gap: .35rem; flex-wrap: wrap; }
+
+  /* Inline edit row */
+  tr.edit-row { background: #f0faf4 !important; }
+  tr.edit-row td { padding: .5rem .9rem; }
+  .edit-row-form { display: flex; gap: .4rem; align-items: center; flex-wrap: wrap; }
+  .edit-row-form input[type="text"] {
+    padding: .35rem .6rem; border: 1px solid #95d5b2; border-radius: 5px;
+    font-size: .88rem; font-family: inherit; width: 140px;
+  }
+  .edit-row-form input[type="text"]:focus { outline: none; border-color: #2d6a4f; }
+
+  /* Blocklist section */
+  .section-sep { margin: 2.5rem 0 1.2rem; border: none; border-top: 2px solid #e0e0e0; }
+  .blocklist-header { display: flex; align-items: baseline; gap: 1.2rem; margin-bottom: 1rem; }
+  .blocklist-header h2 { font-size: 1.2rem; }
+  .blocklist-add-form { display: flex; gap: .5rem; margin-bottom: 1.2rem; }
+  .blocklist-add-form input[type="text"] {
+    padding: .4rem .75rem; border: 1px solid #ccc; border-radius: 5px;
+    font-size: .9rem; font-family: inherit; width: 220px;
+  }
+  .blocklist-add-form input[type="text"]:focus { outline: none; border-color: #2d6a4f; box-shadow: 0 0 0 2px #b7e4c7; }
+  .tag-list { display: flex; flex-wrap: wrap; gap: .5rem; }
+  .tag {
+    display: inline-flex; align-items: center; gap: .35rem;
+    background: #fde8e8; border: 1px solid #f5b8b8; border-radius: 20px;
+    padding: .25rem .75rem; font-size: .85rem; color: #7d0000;
+  }
+  .tag form { margin: 0; }
+  .tag button { background: none; border: none; cursor: pointer; padding: 0; font-size: .85rem; color: #e63946; line-height: 1; font-weight: 700; }
+  .tag button:hover { color: #b52a33; }
+  .no-blocked { font-size: .88rem; color: #999; }
+  /* Icon action buttons */
+  .icon-btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 6px; border: none;
+    cursor: pointer; transition: background .15s, transform .1s;
+    background: none; padding: 0; flex-shrink: 0;
+  }
+  .icon-btn:hover { transform: scale(1.12); }
+  .icon-btn svg { width: 15px; height: 15px; }
+  .icon-btn.ib-reset  { background: #fff3cd; color: #92400e; }
+  .icon-btn.ib-reset:hover  { background: #fde68a; }
+  .icon-btn.ib-edit   { background: #dbeafe; color: #1d4ed8; }
+  .icon-btn.ib-edit:hover   { background: #bfdbfe; }
+  .icon-btn.ib-del    { background: #fee2e2; color: #b91c1c; }
+  .icon-btn.ib-del:hover    { background: #fecaca; }
+  .icon-btn.ib-block  { background: #f3f4f6; color: #374151; }
+  .icon-btn.ib-block:hover  { background: #e5e7eb; }
+  .icon-btn.ib-save   { background: #dcfce7; color: #15803d; }
+  .icon-btn.ib-save:hover   { background: #bbf7d0; }
+  .icon-btn.ib-cancel { background: #f3f4f6; color: #6b7280; }
+  .icon-btn.ib-cancel:hover { background: #e5e7eb; }
+
+  /* Search / sort toolbar */
+  .search-sort-bar { display: flex; gap: .75rem; align-items: center; margin-bottom: .8rem; flex-wrap: wrap; }
+  .search-sort-bar input[type="search"] {
+    padding: .4rem .75rem; border: 1px solid #ccc; border-radius: 5px;
+    font-size: .9rem; font-family: inherit; width: 220px;
+  }
+  .search-sort-bar input[type="search"]:focus { outline: none; border-color: #2d6a4f; box-shadow: 0 0 0 2px #b7e4c7; }
+  .search-count { font-size: .85rem; color: #666; }
+  th.sortable { cursor: pointer; user-select: none; }
+  th.sortable:hover { background: #245c43; }
+  th.sortable .sort-icon { margin-left: .3rem; font-size: .8em; }
+  th.sortable.asc  .sort-icon::after { content: '\25B2'; }
+  th.sortable.desc .sort-icon::after { content: '\25BC'; }
+  th.sortable:not(.asc):not(.desc) .sort-icon::after { content: '\21C5'; opacity: .5; }
+  .no-results-row { display: none; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="manage-header">
+  <h1>Manage Words</h1>
+  {% if words %}<span class="word-count">{{ words|length }} word{{ 's' if words|length != 1 }}</span>{% endif %}
+</div>
+
+<!-- Add word manually -->
+<form class="add-form" method="POST" action="{{ url_for('manage_add') }}">
+  <div>
+    <label for="add-spanish">Spanish *</label>
+    <input type="text" id="add-spanish" name="spanish_word" placeholder="e.g. llamar" required autocomplete="off">
+  </div>
+  <div>
+    <label for="add-english">English</label>
+    <input type="text" id="add-english" name="english_translation" placeholder="e.g. to call" autocomplete="off">
+    <span class="hint">Leave blank to auto-translate</span>
+  </div>
+  <div style="align-self:flex-end">
+    <button class="btn btn-primary btn-sm" type="submit">Add Word</button>
+  </div>
+</form>
+
+{% if words %}
+<div class="search-sort-bar">
+  <input type="search" id="word-search" placeholder="Search words…" autocomplete="off">
+  <span id="search-count" class="search-count"></span>
+</div>
+<table>
+  <thead>
+    <tr>
+      <th class="sortable" data-col="0">Spanish<span class="sort-icon"></span></th>
+      <th class="sortable" data-col="1">English<span class="sort-icon"></span></th>
+      <th class="sortable desc" data-col="2">Score<span class="sort-icon"></span></th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for word in words %}
+    <!-- Normal display row -->
+    <tr id="row-{{ word.id }}">
+      <td><strong>{{ word.spanish_word }}</strong></td>
+      <td>{{ word.english_translation or '—' }}</td>
+      <td class="score-cell">
+        <div class="score-bar-wrap">
+          <div class="score-bar">
+            <div class="score-bar-fill" style="width: {{ (word.score * 100)|int }}%"></div>
+          </div>
+          <span class="score-val">{{ '%.2f'|format(word.score) }}</span>
+        </div>
+      </td>
+      <td>
+        <div class="actions-cell">
+          <form method="POST" action="{{ url_for('reset_score', word_id=word.id) }}"
+            data-ajax-action="reset" data-word-id="{{ word.id }}">
+            <button class="icon-btn ib-reset" type="submit" title="Reset score">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99"/></svg>
+            </button>
+          </form>
+          <button class="icon-btn ib-edit" type="button" title="Edit"
+            onclick="showEdit({{ word.id }}, '{{ word.spanish_word }}', '{{ (word.english_translation or '') | replace("'", "\\'") }}')">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125"/></svg>
+          </button>
+          <form method="POST" action="{{ url_for('manage_delete', word_id=word.id) }}"
+            data-ajax-action="delete" data-word-id="{{ word.id }}" data-word-name="{{ word.spanish_word }}">
+            <button class="icon-btn ib-del" type="submit" title="Delete">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/></svg>
+            </button>
+          </form>
+          <form method="POST" action="{{ url_for('block_word', word_id=word.id) }}"
+            data-ajax-action="block" data-word-id="{{ word.id }}">
+            <button class="icon-btn ib-block" type="submit" title="Block word">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 0 0 5.636 5.636m12.728 12.728A9 9 0 0 1 5.636 5.636m12.728 12.728L5.636 5.636"/></svg>
+            </button>
+          </form>
+        </div>
+      </td>
+    </tr>
+    <!-- Inline edit row (hidden by default) -->
+    <tr id="edit-{{ word.id }}" class="edit-row" style="display:none;">
+      <td colspan="4">
+        <form class="edit-row-form" method="POST" action="{{ url_for('manage_edit', word_id=word.id) }}"
+          data-ajax-action="edit" data-word-id="{{ word.id }}">
+          <input type="text" name="spanish_word" id="edit-sp-{{ word.id }}" placeholder="Spanish" required>
+          <input type="text" name="english_translation" id="edit-en-{{ word.id }}" placeholder="English">
+          <button class="icon-btn ib-save" type="submit" title="Save">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
+          </button>
+          <button class="icon-btn ib-cancel" type="button" title="Cancel"
+            onclick="hideEdit({{ word.id }})">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>
+          </button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+    <tr id="no-results-row" class="no-results-row"><td colspan="4" class="no-words">No matching words.</td></tr>
+  </tbody>
+</table>
+{% else %}
+<table><tbody><tr><td class="no-words" colspan="4">No words saved yet. <a href="{{ url_for('write') }}">Add some →</a></td></tr></tbody></table>
+{% endif %}
+
+<hr class="section-sep">
+
+<div class="blocklist-header">
+  <h2>Blocklist</h2>
+  {% if blocked %}<span class="word-count">{{ blocked|length }} word{{ 's' if blocked|length != 1 }}</span>{% endif %}
+</div>
+
+<form class="blocklist-add-form" method="POST" action="{{ url_for('blocklist_add') }}">
+  <input type="text" name="word" placeholder="Add word to blocklist…" autocomplete="off">
+  <button class="btn btn-primary btn-sm" type="submit">Add</button>
+</form>
+
+{% if blocked %}
+<div class="tag-list">
+  {% for item in blocked %}
+  <span class="tag">
+    {{ item.word }}
+    <form method="POST" action="{{ url_for('blocklist_remove', block_id=item.id) }}"
+      data-ajax-action="blocklist-remove" data-block-id="{{ item.id }}">
+      <button type="submit" title="Unblock">✕</button>
+    </form>
+  </span>
+  {% endfor %}
+</div>
+{% else %}
+<p class="no-blocked">No words blocked yet.</p>
+{% endif %}
+
+<script>
+function showEdit(id, spanish, english) {
+  document.getElementById('row-' + id).style.display = 'none';
+  var editRow = document.getElementById('edit-' + id);
+  editRow.style.display = '';
+  document.getElementById('edit-sp-' + id).value = spanish;
+  document.getElementById('edit-en-' + id).value = english;
+  document.getElementById('edit-sp-' + id).focus();
+}
+function hideEdit(id) {
+  document.getElementById('edit-' + id).style.display = 'none';
+  document.getElementById('row-' + id).style.display = '';
+}
+
+function ajaxPost(url, formData, cb) {
+  fetch(url, {
+    method: 'POST',
+    body: formData,
+    headers: {'X-Requested-With': 'XMLHttpRequest'}
+  }).then(function(r) { return r.json(); }).then(cb).catch(function() {});
+}
+
+document.addEventListener('submit', function(e) {
+  var form = e.target;
+  var action = form.dataset.ajaxAction;
+  if (!action) return;
+  e.preventDefault();
+  var fd = new FormData(form);
+  var url = form.action;
+
+  if (action === 'reset') {
+    var id = form.dataset.wordId;
+    ajaxPost(url, fd, function(data) {
+      if (!data.ok) return;
+      var fill = document.querySelector('#row-' + id + ' .score-bar-fill');
+      var val  = document.querySelector('#row-' + id + ' .score-val');
+      if (fill) fill.style.width = '0%';
+      if (val)  val.textContent = '0.00';
+    });
+
+  } else if (action === 'delete') {
+    var id   = form.dataset.wordId;
+    var name = form.dataset.wordName;
+    if (!confirm('Delete \'' + name + '\'?')) return;
+    ajaxPost(url, fd, function(data) {
+      if (!data.ok) return;
+      var r  = document.getElementById('row-'  + id);
+      var ed = document.getElementById('edit-' + id);
+      if (r)  r.remove();
+      if (ed) ed.remove();
+    });
+
+  } else if (action === 'block') {
+    var id = form.dataset.wordId;
+    ajaxPost(url, fd, function(data) {
+      if (!data.ok) return;
+      var r  = document.getElementById('row-'  + id);
+      var ed = document.getElementById('edit-' + id);
+      if (r)  r.remove();
+      if (ed) ed.remove();
+      var tagList   = document.querySelector('.tag-list');
+      var noBlocked = document.querySelector('.no-blocked');
+      if (noBlocked) noBlocked.remove();
+      if (!tagList) {
+        tagList = document.createElement('div');
+        tagList.className = 'tag-list';
+        document.querySelector('.blocklist-add-form').insertAdjacentElement('afterend', tagList);
+      }
+      var span = document.createElement('span');
+      span.className = 'tag';
+      span.innerHTML = data.word +
+        ' <form method="POST" action="/manage/blocklist/remove/' + data.block_id + '"' +
+        ' data-ajax-action="blocklist-remove" data-block-id="' + data.block_id + '">' +
+        '<button type="submit" title="Unblock">\u2715</button></form>';
+      tagList.appendChild(span);
+    });
+
+  } else if (action === 'edit') {
+    var id = form.dataset.wordId;
+    ajaxPost(url, fd, function(data) {
+      if (!data.ok) { alert(data.error || 'Could not save.'); return; }
+      var row = document.getElementById('row-' + id);
+      row.querySelector('td:first-child strong').textContent = data.spanish;
+      row.querySelector('td:nth-child(2)').textContent = data.english || '\u2014';
+      hideEdit(id);
+    });
+
+  } else if (action === 'blocklist-remove') {
+    ajaxPost(url, fd, function(data) {
+      if (!data.ok) return;
+      var tag = form.closest('.tag');
+      if (tag) tag.remove();
+      var tagList = document.querySelector('.tag-list');
+      if (tagList && tagList.children.length === 0) {
+        tagList.insertAdjacentHTML('afterend', '<p class="no-blocked">No words blocked yet.</p>');
+        tagList.remove();
+      }
+    });
+  }
+});
+
+// --- Search ---
+var sortState = { col: 2, dir: 'desc' };
+
+function updateSearch() {
+  var q = (document.getElementById('word-search').value || '').toLowerCase();
+  var rows = Array.from(document.querySelectorAll('tbody tr[id^="row-"]'));
+  var visible = 0;
+  rows.forEach(function(row) {
+    var id = row.id.replace('row-', '');
+    var sp = (row.querySelector('td:first-child strong') || {}).textContent || '';
+    var en = (row.querySelector('td:nth-child(2)') || {}).textContent || '';
+    var show = !q || sp.toLowerCase().includes(q) || en.toLowerCase().includes(q);
+    row.style.display = show ? '' : 'none';
+    var editRow = document.getElementById('edit-' + id);
+    if (editRow && editRow.style.display !== 'none' && !show) {
+      hideEdit(parseInt(id));
+    }
+    if (show) visible++;
+  });
+  var countEl = document.getElementById('search-count');
+  if (countEl) countEl.textContent = q ? (visible + ' of ' + rows.length) : '';
+  var noRes = document.getElementById('no-results-row');
+  if (noRes) noRes.style.display = (rows.length > 0 && visible === 0) ? '' : 'none';
+}
+
+var searchInput = document.getElementById('word-search');
+if (searchInput) searchInput.addEventListener('input', updateSearch);
+
+// --- Sort ---
+function sortTable(col) {
+  var tbody = document.querySelector('table tbody');
+  if (!tbody) return;
+  var displayRows = Array.from(tbody.querySelectorAll('tr[id^="row-"]'));
+  var pairs = displayRows.map(function(r) {
+    var id = r.id.replace('row-', '');
+    return { display: r, edit: document.getElementById('edit-' + id) };
+  });
+
+  var newDir = (sortState.col === col && sortState.dir === 'asc') ? 'desc' : 'asc';
+  sortState = { col: col, dir: newDir };
+
+  pairs.sort(function(a, b) {
+    var aVal, bVal;
+    if (col === 0) {
+      aVal = (a.display.querySelector('td:first-child strong') || {}).textContent || '';
+      bVal = (b.display.querySelector('td:first-child strong') || {}).textContent || '';
+      return newDir === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+    } else if (col === 1) {
+      aVal = (a.display.querySelector('td:nth-child(2)') || {}).textContent || '';
+      bVal = (b.display.querySelector('td:nth-child(2)') || {}).textContent || '';
+      return newDir === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+    } else {
+      aVal = parseFloat((a.display.querySelector('.score-val') || {}).textContent) || 0;
+      bVal = parseFloat((b.display.querySelector('.score-val') || {}).textContent) || 0;
+      return newDir === 'asc' ? aVal - bVal : bVal - aVal;
+    }
+  });
+
+  var noRes = document.getElementById('no-results-row');
+  pairs.forEach(function(p) {
+    tbody.appendChild(p.display);
+    if (p.edit) tbody.appendChild(p.edit);
+  });
+  if (noRes) tbody.appendChild(noRes);
+
+  document.querySelectorAll('th.sortable').forEach(function(th) {
+    th.classList.remove('asc', 'desc');
+    if (parseInt(th.dataset.col) === col) th.classList.add(newDir);
+  });
+  updateSearch();
+}
+
+document.querySelectorAll('th.sortable').forEach(function(th) {
+  th.addEventListener('click', function() { sortTable(parseInt(th.dataset.col)); });
+});
+</script>
+{% endblock %}

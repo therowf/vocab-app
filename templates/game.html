@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+{% block title %}Game — Español{% endblock %}
+
+{% block head %}
+<style>
+  .game-header { display: flex; align-items: center; gap: 1.5rem; margin-bottom: 1.4rem; flex-wrap: wrap; }
+  .game-header h1 { margin: 0; }
+  .progress-label { font-size: .9rem; color: #555; }
+  .columns {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+  }
+  .col-title {
+    font-size: .78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: #888;
+    margin-bottom: .5rem;
+  }
+  .word-card {
+    display: block;
+    width: 100%;
+    text-align: center;
+    padding: .7rem 1rem;
+    margin-bottom: .6rem;
+    background: #fff;
+    border: 2px solid #d0d0d0;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1rem;
+    font-family: inherit;
+    transition: border-color .15s, background .15s, opacity .3s;
+    user-select: none;
+  }
+  .word-card:hover:not(:disabled) { border-color: #2d6a4f; background: #f0faf4; }
+  .word-card.selected { border-color: #2d6a4f; background: #d8f3dc; font-weight: 600; }
+  .word-card.correct  { border-color: #40916c; background: #b7e4c7; opacity: 1; }
+  .word-card.wrong    { border-color: #e63946; background: #ffe0e0; }
+  .word-card.matched  { opacity: .25; pointer-events: none; cursor: default; }
+  .word-card:disabled { cursor: default; }
+  #overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,.45);
+    align-items: center; justify-content: center;
+    z-index: 10;
+  }
+  #overlay.show { display: flex; }
+  .overlay-box {
+    background: #fff;
+    border-radius: 12px;
+    padding: 2.5rem 3rem;
+    text-align: center;
+    max-width: 340px;
+  }
+  .overlay-box h2 { font-size: 1.8rem; color: #2d6a4f; margin-bottom: .6rem; }
+  .overlay-box p  { color: #555; margin-bottom: 1.4rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="game-header">
+  <h1>Matching Pairs</h1>
+  <span class="progress-label">Matched: <strong id="matched-count">0</strong> / {{ total }}</span>
+</div>
+
+<div class="columns">
+  <div>
+    <div class="col-title">Spanish</div>
+    {% for item in spanish_col %}
+    <button class="word-card" data-id="{{ item.id }}" data-side="spanish">{{ item.word }}</button>
+    {% endfor %}
+  </div>
+  <div>
+    <div class="col-title">English</div>
+    {% for item in english_col %}
+    <button class="word-card" data-id="{{ item.id }}" data-side="english">{{ item.word }}</button>
+    {% endfor %}
+  </div>
+</div>
+
+<div id="overlay">
+  <div class="overlay-box">
+    <h2>Round Complete!</h2>
+    <p>You matched all {{ total }} pairs.</p>
+    <a href="{{ url_for('game') }}" class="btn btn-primary">Play Again</a>
+  </div>
+</div>
+
+<script>
+(function () {
+  const CHECK_URL = "{{ url_for('game_check') }}";
+  let selectedSpanish = null;
+  let selectedEnglish = null;
+  let locked = false;
+  let matchedCount = 0;
+  const total = {{ total }};
+
+  document.querySelectorAll(".word-card").forEach(card => {
+    card.addEventListener("click", () => handleClick(card));
+  });
+
+  function handleClick(card) {
+    if (locked || card.classList.contains("matched")) return;
+
+    const side = card.dataset.side;
+
+    // Deselect same-side previous pick
+    if (side === "spanish" && selectedSpanish) {
+      selectedSpanish.classList.remove("selected");
+    }
+    if (side === "english" && selectedEnglish) {
+      selectedEnglish.classList.remove("selected");
+    }
+
+    card.classList.add("selected");
+    if (side === "spanish") selectedSpanish = card;
+    else selectedEnglish = card;
+
+    if (selectedSpanish && selectedEnglish) {
+      locked = true;
+      checkPair();
+    }
+  }
+
+  async function checkPair() {
+    const sId = parseInt(selectedSpanish.dataset.id);
+    const eId = parseInt(selectedEnglish.dataset.id);
+
+    const resp = await fetch(CHECK_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ spanish_id: sId, english_id: eId }),
+    });
+    const data = await resp.json();
+
+    if (data.correct) {
+      selectedSpanish.classList.remove("selected");
+      selectedEnglish.classList.remove("selected");
+      selectedSpanish.classList.add("correct");
+      selectedEnglish.classList.add("correct");
+
+      const s = selectedSpanish, e = selectedEnglish;
+      setTimeout(() => {
+        s.classList.remove("correct");
+        e.classList.remove("correct");
+        s.classList.add("matched");
+        e.classList.add("matched");
+      }, 600);
+
+      matchedCount++;
+      document.getElementById("matched-count").textContent = matchedCount;
+
+      if (matchedCount === total) {
+        setTimeout(() => document.getElementById("overlay").classList.add("show"), 700);
+      }
+    } else {
+      selectedSpanish.classList.add("wrong");
+      selectedEnglish.classList.add("wrong");
+
+      const s = selectedSpanish, e = selectedEnglish;
+      setTimeout(() => {
+        s.classList.remove("selected", "wrong");
+        e.classList.remove("selected", "wrong");
+      }, 700);
+    }
+
+    selectedSpanish = null;
+    selectedEnglish = null;
+    setTimeout(() => { locked = false; }, 750);
+  }
+})();
+</script>
+{% endblock %}

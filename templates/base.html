@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}Español{% endblock %}</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, sans-serif;
+      background: #f5f5f0;
+      color: #222;
+      min-height: 100vh;
+    }
+    nav {
+      background: #2d6a4f;
+      padding: .75rem 2rem;
+      display: flex;
+      gap: 1.5rem;
+      align-items: center;
+    }
+    nav a {
+      color: #d8f3dc;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: .95rem;
+      letter-spacing: .02em;
+    }
+    nav a:hover { color: #fff; }
+    nav .brand { color: #fff; font-size: 1.1rem; margin-right: auto; }
+    main { max-width: 860px; margin: 2rem auto; padding: 0 1rem; }
+    .flash-list { list-style: none; margin-bottom: 1.2rem; }
+    .flash-list li {
+      padding: .7rem 1rem;
+      border-radius: 6px;
+      margin-bottom: .5rem;
+      font-size: .9rem;
+    }
+    .flash-list li.success { background: #d8f3dc; color: #1b4332; }
+    .flash-list li.warning { background: #fff3cd; color: #7d4e00; }
+    .flash-list li.error   { background: #ffe0e0; color: #7d0000; }
+    h1 { font-size: 1.6rem; margin-bottom: 1.2rem; }
+    h2 { font-size: 1.2rem; margin-bottom: .8rem; }
+    button, .btn {
+      cursor: pointer;
+      padding: .5rem 1.2rem;
+      border: none;
+      border-radius: 5px;
+      font-size: .9rem;
+      font-weight: 600;
+    }
+    .btn-primary { background: #2d6a4f; color: #fff; }
+    .btn-primary:hover { background: #1b4332; }
+    .btn-danger  { background: #e63946; color: #fff; }
+    .btn-danger:hover { background: #b52a33; }
+    .btn-sm { padding: .3rem .75rem; font-size: .8rem; }
+  </style>
+  {% block head %}{% endblock %}
+</head>
+<body>
+  <nav>
+    <span class="brand">🇪🇸 Español</span>
+    <a href="{{ url_for('write') }}">Write</a>
+    <a href="{{ url_for('game') }}">Game</a>
+    <a href="{{ url_for('manage') }}">Manage</a>
+  </nav>
+  <main>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <ul class="flash-list">
+          {% for category, message in messages %}
+            <li class="{{ category }}">{{ message }}</li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    {% endwith %}
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>
